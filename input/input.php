@@ -1,13 +1,17 @@
 <?php
-$ogc_fid    = $_POST['ogc_fid'];
-$no         = $_POST['no'];
-$nama_kode  = $_POST['nama_kode'];
-$alamat     = $_POST['alamat'];
-$status     = $_POST['status'];
-$longitude  = $_POST['longitude'];
-$latitude   = $_POST['latitude'];
+$ogc_fid    = filter_input(INPUT_POST, 'ogc_fid', FILTER_VALIDATE_FLOAT);
+$no         = filter_input(INPUT_POST, 'no', FILTER_VALIDATE_INT);
+$nama_kode  = trim((string)filter_input(INPUT_POST, 'nama_kode'));
+$alamat     = trim((string)filter_input(INPUT_POST, 'alamat'));
+$status     = trim((string)filter_input(INPUT_POST, 'status'));
+$longitude  = filter_input(INPUT_POST, 'longitude', FILTER_VALIDATE_FLOAT);
+$latitude   = filter_input(INPUT_POST, 'latitude', FILTER_VALIDATE_FLOAT);
 
-// Sesuaikan koneksi database MySQL kamu
+if ($ogc_fid === false || $no === false || $longitude === false || $latitude === false || $nama_kode === '' || $alamat === '' || $status === '') {
+    http_response_code(400);
+    die("Data tidak valid.");
+}
+
 $servername = "localhost";
 $username   = "root";
 $password   = "";
@@ -19,19 +23,19 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
-// Query INSERT data baru ke tabel hidran_kering
-$sql = "INSERT INTO hidran_kering (ogc_fid, no, nama_kode, alamat, status, longitude, latitude) 
-        VALUES ($ogc_fid, $no, '$nama_kode', '$alamat', '$status', $longitude, $latitude)";
+$stmt = $conn->prepare("INSERT INTO hidran_kering (ogc_fid, no, nama_kode, alamat, status, longitude, latitude) VALUES (?, ?, ?, ?, ?, ?, ?)");
+$stmt->bind_param("diissdd", $ogc_fid, $no, $nama_kode, $alamat, $status, $longitude, $latitude);
 
-if ($conn->query($sql) === TRUE) {
-    echo "Data baru berhasil ditambahkan";
-} else {
-    echo "Error: " . $sql . "<br>" . $conn->error;
+if ($stmt->execute()) {
+    $stmt->close();
+    $conn->close();
+    header("Location: ../index.php");
+    exit();
 }
 
+$error = $stmt->error;
+$stmt->close();
 $conn->close();
-
-// Kembali ke halaman utama (index.php di folder luar)
-header("Location: ../index.php");
-exit();
+	http_response_code(500);
+throw new RuntimeException("Error: " . $error);
 ?>

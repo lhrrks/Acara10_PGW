@@ -1,5 +1,10 @@
 <?php
-$id = $_GET['id'];
+$id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
+
+if ($id === false || $id < 1) {
+    http_response_code(400);
+    die("ID tidak valid.");
+}
 
 $servername = "localhost";
 $username = "root";
@@ -12,16 +17,20 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
-// Query Hapus berdasarkan id
-$sql = "DELETE FROM hidran_kering WHERE id = $id";
+$stmt = $conn->prepare("DELETE FROM hidran_kering WHERE id = ?");
+$stmt->bind_param("i", $id);
 
-if ($conn->query($sql) === TRUE) {
-    echo "Data dengan ID = $id berhasil dihapus";
-} else {
-    echo "Error: " . $sql . "<br>" . $conn->error;
+if ($stmt->execute()) {
+    $stmt->close();
+    $conn->close();
+    header("Location: index.php");
+    exit();
 }
 
+$error = $stmt->error;
+$stmt->close();
 $conn->close();
-header("Location: index.php");
-exit();
+
+http_response_code(500);
+throw new RuntimeException("Error: " . $error);
 ?>

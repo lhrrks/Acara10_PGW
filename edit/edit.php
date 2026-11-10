@@ -1,12 +1,17 @@
 <?php
-$id = $_POST['id'];
-$ogc_fid = $_POST['ogc_fid'];
-$no = $_POST['no'];
-$nama_kode = $_POST['nama_kode'];
-$alamat = $_POST['alamat'];
-$status = $_POST['status'];
-$longitude = $_POST['longitude'];
-$latitude = $_POST['latitude'];
+$id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
+$ogc_fid = filter_input(INPUT_POST, 'ogc_fid', FILTER_VALIDATE_FLOAT);
+$no = filter_input(INPUT_POST, 'no', FILTER_VALIDATE_INT);
+$nama_kode = trim((string)filter_input(INPUT_POST, 'nama_kode'));
+$alamat = trim((string)filter_input(INPUT_POST, 'alamat'));
+$status = trim((string)filter_input(INPUT_POST, 'status'));
+$longitude = filter_input(INPUT_POST, 'longitude', FILTER_VALIDATE_FLOAT);
+$latitude = filter_input(INPUT_POST, 'latitude', FILTER_VALIDATE_FLOAT);
+
+if ($id === false || $ogc_fid === false || $no === false || $longitude === false || $latitude === false || $nama_kode === '' || $alamat === '' || $status === '') {
+    http_response_code(400);
+    die("Data tidak valid.");
+}
 
 $servername = "localhost";
 $username = "root";
@@ -19,24 +24,20 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
-// Query UPDATE untuk tabel hidran_kering
-$sql = "UPDATE hidran_kering SET 
-        ogc_fid=$ogc_fid, 
-        no=$no, 
-        nama_kode='$nama_kode', 
-        alamat='$alamat', 
-        status='$status', 
-        longitude=$longitude, 
-        latitude=$latitude 
-        WHERE id=$id";
+$stmt = $conn->prepare("UPDATE hidran_kering SET ogc_fid = ?, no = ?, nama_kode = ?, alamat = ?, status = ?, longitude = ?, latitude = ? WHERE id = ?");
+$stmt->bind_param("diissddi", $ogc_fid, $no, $nama_kode, $alamat, $status, $longitude, $latitude, $id);
 
-if ($conn->query($sql) === TRUE) {
-    echo "Data berhasil diperbarui";
-} else {
-    echo "Error: " . $sql . "<br>" . $conn->error;
+if ($stmt->execute()) {
+    $stmt->close();
+    $conn->close();
+    header("Location: ../index.php");
+    exit();
 }
 
+$error = $stmt->error;
+$stmt->close();
 $conn->close();
-header("Location: ../index.php");
-exit();
+
+http_response_code(500);
+throw new RuntimeException("Error: " . $error);
 ?>
